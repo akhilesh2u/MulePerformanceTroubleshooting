@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <spring:beans>
+        <spring:bean id="objectStore" class="org.mule.util.store.InMemoryObjectStore">
+            <spring:property name="maxEntries" value="-1"/>
+        </spring:bean>
+    </spring:beans>
+    <flow name="continousloop" processingStrategy="synchronous" >
+		<quartz:inbound-endpoint jobName="writeCustomers" repeatInterval="5000" doc:name="Quartz" repeatCount="1" responseTimeout="10000">
+		    <quartz:event-generator-job/>
+		</quartz:inbound-endpoint>   
+        <logger level="WARN" message="Writing customers..." doc:name="Logger"/>
+        <async doc:name="Async">
+        	<set-variable variableName="#['counter']" value="#[0]" doc:name="Variable"/>
+            <flow-ref name="stackoverflowFlow2" doc:name="stackoverflowFlow2"/>
+        </async>
+        <!-- <set-payload value="Hello Akhilesh" doc:name="Set Payload"/> -->
+    </flow>
+    <flow name="cacheCustomers" processingStrategy="synchronous">
+        <logger level="WARN" message="Reading customers..." doc:name="Logger"/>
+    </flow>
+    <flow name="stackoverflowFlow2" >
+        <logger level="INFO" doc:name="Logger"/>
+        <set-variable variableName="counter" value="#[flowVars['counter']+1]" doc:name="Variable"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars['counter']==100000]">
+                <logger level="INFO" doc:name="Logger" message="Executed 100000 times"/>
+            </when>
+            <otherwise>
+				<component class="com.support.ProcessCustomers" doc:name="Java"/>
+                <flow-ref name="cacheCustomers" doc:name="cacheCustomers"/>
+	            <flow-ref name="stackoverflowFlow2" doc:name="stackoverflowFlow2"/>
+            </otherwise>
+        </choice>
+    </flow>
+</mule>

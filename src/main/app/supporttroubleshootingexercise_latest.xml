@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:quartz="http://www.mulesoft.org/schema/mule/quartz" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.4.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/quartz http://www.mulesoft.org/schema/mule/quartz/current/mule-quartz.xsd http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
+	<spring:bean id="objectStore" class="org.mule.util.store.InMemoryObjectStore">
+		<spring:property name="maxEntries" value="-1"/>
+	</spring:bean>
+	<vm:connector name="vmConnector">
+		<receiver-threading-profile maxThreadsActive="250"/>
+	</vm:connector>
+	<vm:endpoint name="customers" path="customers" />
+    <flow name="supporttroubleshootingexerciseFlow1" doc:name="supporttroubleshootingexerciseFlow1" processingStrategy="synchronous">
+		<quartz:inbound-endpoint jobName="writeCustomers" repeatInterval="60000">
+		    <quartz:event-generator-job/>
+		</quartz:inbound-endpoint>   
+        <logger level="WARN" message="Writing customers..."/>
+        
+		<set-variable variableName="#['counter']" value="#[0]" doc:name="Variable"/>  
+		 <flow-ref name="invokesubflow" doc:name="invokesubflow"/>      
+		
+        <!-- <component class="com.support.ProcessCustomers" doc:name="Java"/>
+        <vm:outbound-endpoint ref="customers"/> -->
+    </flow>
+    <flow name="invokesubflow" >
+        <logger level="INFO" doc:name="Logger"/>
+        <set-variable variableName="counter" value="#[flowVars['counter']+1]" doc:name="Variable"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars['counter']==100000]">
+                <logger level="INFO" doc:name="Logger" message="Executed 100000 times"/>
+            </when>
+            <otherwise>
+           
+				<component class="com.support.ProcessCustomers" doc:name="Java"/>
+                <!-- <flow-ref name="cacheCustomers" doc:name="cacheCustomers"/> -->
+				<vm:outbound-endpoint ref="customers"/>
+	            <flow-ref name="invokesubflow" doc:name="invokesubflow"/>
+            </otherwise>
+        </choice>
+    </flow>
+    
+    <flow name="cacheCustomers" processingStrategy="synchronous">
+    	<!-- <quartz:inbound-endpoint jobName="readCustomers" repeatInterval="5000">
+    		<quartz:endpoint-polling-job>
+    			<quartz:job-endpoint ref="customers" />
+    		</quartz:endpoint-polling-job>
+    	</quartz:inbound-endpoint> -->
+    	<vm:inbound-endpoint ref="customers"/>
+        <logger level="WARN" message="Reading customers..."/>
+    </flow>
+</mule>
